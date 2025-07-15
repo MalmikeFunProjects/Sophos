@@ -1,0 +1,36 @@
+scrape_task:
+  description: >
+    Use the DAAD scraper tool to collect all active scholarships.
+    Focus on title, link, status, summary, details etc.
+  expected_output: >
+    A JSON list of all active scholarships from the DAAD website with detailed fields like title, url, summary, status, and more.
+  agent: scraper
+
+clean_task:
+  description: >
+    Clean and format the scraped scholarship data from the DAAD website.
+    The data to be cleaned is:
+    {output_of:scrape_task}
+
+    Focus on structuring fields like: title, url, status, country, subject, description, deadline, amount, eligibility, provider, notes, eligible countries
+  expected_output: >
+    A cleaned JSON list with all structured scholarship information.
+  agent: cleaner
+
+write_task:
+  description: >
+    Use the cleaned scholarship data below to generate a markdown report and CSV:
+    {output_of:clean_task}
+
+    - The markdown should highlight the top 50 scholarships by relevance.
+    - The CSV should contain all available data with consistent column headers.
+
+  expected_output: >
+    Two separate files:
+    1. A markdown file named `scholarships.md` listing the top 50 scholarships in human-readable format.
+    2. A CSV file named `scholarships.csv` containing the full dataset in structured tabular format.
+
+  agent: writer
+  output_file:
+    - scholarships.md
+    - scholarships.csv
