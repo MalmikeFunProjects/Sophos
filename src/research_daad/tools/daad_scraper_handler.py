@@ -1,4 +1,4 @@
-from research_daad.src.research_daad.tools.daad_scraper import DAADScholarshipScraper
+from src.research_daad.tools.daad_scraper import DAADScholarshipScraper
 from crewai.tools import tool
 
 
