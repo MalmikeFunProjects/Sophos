@@ -18,21 +18,29 @@ Next, navigate to your project directory and install the dependencies:
 ```bash
 crewai install
 ```
-### Customizing
 
-**Add your `OPENAI_API_KEY` into the `.env` file**
+## Customizing
+### Modifying environment variables
+**Copy .env.example into .env**
+Using google gemini (free model).
+- Add your path to google `GOOGLE_APPLICATION_CREDENTIALS`
+- Add your google api key `GOOGLE_API_KEY`
+- Set default llm provider to `google`
+- Set default llm model to `gemini-2.0-flash-lite`
 
+### Customizing the project
 - Modify `src/research_daad/config/agents.yaml` to define your agents
 - Modify `src/research_daad/config/tasks.yaml` to define your tasks
 - Modify `src/research_daad/crew.py` to add your own logic, tools and specific args
 - Modify `src/research_daad/main.py` to add custom inputs for your agents and tasks
+- Modify `src/research_daad/tools/**` to add your own tools
 
 ## Running the Project
 
 To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
 
 ```bash
-python research_daad/src/research_daad/main.py
+python src/research_daad/main.py
 ```
 
 This command initializes the research-daad Crew, assembling the agents and assigning them tasks as defined in the configuration.
@@ -41,7 +49,7 @@ This example, will run the create a `scholarship.md` file with the output of a r
 
 ### Running the scraper separately
 ```bash
-python research_daad/src/research_daad/tools/daad_scraper.py
+python src/research_daad/tools/daad_scraper.py
 ```
 This will create a file `daad_scholarships.json` containing the scraped data
 
