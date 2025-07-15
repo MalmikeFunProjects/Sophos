@@ -2,10 +2,10 @@ import os
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
-from research_daad.src.research_daad.tools.daad_scraper_handler import scrape_daad_scholarships
+from src.research_daad.tools.daad_scraper_handler import scrape_daad_scholarships
 from typing import Any, Dict, List, Optional
 
-from research_daad.src.research_daad.utils.llm_handler import LLMHandler
+from src.research_daad.utils.llm_handler import LLMHandler
 # If you want to run a snippet of code before or after the crew starts,
 # you can use the @before_kickoff and @after_kickoff decorators
 # https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators

@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-import os
 import sys
 import warnings
 
 from datetime import datetime
 
-from research_daad.src.research_daad.crew import ResearchDaad
+from src.research_daad.crew import ResearchDaad
 from dotenv import load_dotenv
 
 
