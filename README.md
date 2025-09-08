@@ -14,6 +14,23 @@ pip install uv
 
 Next, navigate to your project directory and install the dependencies:
 
+**OPTION 1**:
+
+Set up the virtual environment for the project. The instructions to activate it are given on completion of creation.
+```bash
+uv venv
+```
+For the default case to activate the environment on a linux based machine run:
+```bash
+source .venv/bin/activate
+```
+After activating the envionment, install the project dependencies
+```bash
+uv pip install -r pyproject.toml
+```
+
+**OPTION 2**:
+
 (Optional) Lock the dependencies and install them by using the CLI command:
 ```bash
 crewai install
