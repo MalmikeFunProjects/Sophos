@@ -12,7 +12,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from webdriver_manager.chrome import ChromeDriverManager
+
+import src.utils.config as CONFIG
 
 
 class DAADScholarshipScraper:
@@ -49,7 +50,7 @@ class DAADScholarshipScraper:
             "--disable-blink-features=AutomationControlled",
             "--disable-extensions",
             "--disable-plugins",
-            "--disable-images"  # Faster loading
+            "--blink-settings=imagesEnabled=false"
         ]
 
         if headless:
@@ -58,8 +59,16 @@ class DAADScholarshipScraper:
         for option in options_list:
             chrome_options.add_argument(option)
 
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        if CONFIG.RUNNING_IN_DOCKER:
+            # Point to Chromium binary explicitly (Debian path)
+            chrome_options.binary_location = "/usr/bin/chromium"
+            # Provide the system chromedriver path ***
+            service = Service(executable_path="/usr/bin/chromedriver")
+            # Let Selenium 4.34.2 manage the right chromedriver automatically
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        else:
+            self.driver = webdriver.Chrome(options=chrome_options)
+
         self.driver.implicitly_wait(10)
 
     def _handle_cookie_popup(self) -> None:
@@ -326,7 +335,7 @@ class DAADScholarshipScraper:
 
 def main():
     """Main function to run the scraper"""
-    with DAADScholarshipScraper(headless=False) as scraper:
+    with DAADScholarshipScraper(headless=True) as scraper:
         try:
             # Scrape scholarships (limit to first 3 pages for testing)
             scholarships = scraper.scrape_scholarships()

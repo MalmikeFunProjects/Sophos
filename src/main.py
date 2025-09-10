@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 import sys
 import warnings
+import os
 
 from datetime import datetime
+from pathlib import Path
 
 from src.research_daad.crew import ResearchDaad
-from dotenv import load_dotenv
+import src.utils.config as CONFIG
+# from dotenv import load_dotenv
 
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
@@ -30,14 +33,17 @@ def run():
         # result = ResearchDaad().crew().kickoff(inputs=inputs)
 
         # Split markdown and CSV content
+        out_dir = "output"
+        os.makedirs(out_dir, exist_ok=True)
+
         if '[CSV]' in result and '[MARKDOWN]' in result:
             md_content = result.split('[MARKDOWN]')[1].split('[CSV]')[0].strip()
             csv_content = result.split('[CSV]')[1].strip()
 
-            with open('scholarships.md', 'w') as md_file:
+            with open(f'{out_dir}/scholarships.md', 'w') as md_file:
                 md_file.write(md_content)
 
-            with open('scholarships.csv', 'w') as csv_file:
+            with open(f'{out_dir}/scholarships.csv', 'w') as csv_file:
                 csv_file.write(csv_content)
     except Exception as e:
         raise Exception(f"An error occurred while running the crew: {e}")
@@ -82,5 +88,4 @@ def test():
         raise Exception(f"An error occurred while testing the crew: {e}")
 
 if __name__ == "__main__":
-    load_dotenv()
     run()

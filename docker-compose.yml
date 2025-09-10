@@ -1,0 +1,75 @@
+services:
+  db:
+    image: postgres:16
+    container_name: postgres
+    hostname: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-research_data}
+      POSTGRES_USER: ${POSTGRES_USER:-root}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - research_network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-root} -d ${POSTGRES_DB:-research_daad}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    hostname: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "8088:80"
+    networks:
+      - research_network
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  research_daad:
+    container_name: research_daad
+    hostname: research_daad
+    shm_size: 2g
+    build:
+      dockerfile: Dockerfile
+    networks:
+      - research_network
+    volumes:
+      - research_data_data:/app/output
+      - type: bind
+        source: ./src
+        target: /app/src
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ./assets/google_credentials.json
+        target: /app/assets/google_credentials.json
+        read_only: true
+
+volumes:
+  db_data:
+  pgadmin_data:
+  research_data_data:
+
+networks:
+  research_network:
+    driver: bridge
+

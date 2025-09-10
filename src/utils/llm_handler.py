@@ -185,7 +185,7 @@ class LLMHandler:
     #     llm = OpenAI(
     #         model_name="openrouter/{self.model}",
     #         openai_api_base="https://openrouter.ai/api/v1",
-    #         openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+    #         openai_api_key=CONFIG.OPENROUTER_API_KEY,
     #         **config
     #     )
     #     return llm
