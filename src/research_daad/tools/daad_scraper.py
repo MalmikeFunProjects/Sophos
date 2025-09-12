@@ -27,6 +27,7 @@ class DAADScholarshipScraper:
         self.driver = None
         self.logger = self._setup_logging()
         self.setup_driver(headless)
+        self.scholarship_links = {}
 
     def _setup_logging(self) -> logging.Logger:
         """Setup logging configuration"""
@@ -69,21 +70,42 @@ class DAADScholarshipScraper:
         else:
             self.driver = webdriver.Chrome(options=chrome_options)
 
+
         self.driver.implicitly_wait(10)
 
     def _handle_cookie_popup(self) -> None:
         """Handle cookie consent popup if present"""
         try:
-            accept_button = WebDriverWait(self.driver, 5).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "//button[contains(text(), 'Accept')]")
+            # Wait for the modal to appear (shorter timeout)
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.CLASS_NAME, "snoop-modal")
                 )
             )
+
+            # Look for the specific "Accept" button with the qa class
+            accept_button = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable(
+                    (By.CLASS_NAME, "qa-cookie-consent-accept-all")
+                )
+            )
+
+            # Scroll into view if needed
+            self.driver.execute_script("arguments[0].scrollIntoView();", accept_button)
+
+            # Click the button
             accept_button.click()
             self.logger.info("Cookie consent accepted")
-            time.sleep(2)
+
+            # Wait for modal to disappear (short wait)
+            WebDriverWait(self.driver, 5).until(
+                EC.invisibility_of_element_located((By.CLASS_NAME, "snoop-modal"))
+            )
+
         except TimeoutException:
-            self.logger.info("No cookie popup found")
+            self.logger.info("No cookie popup found or already handled")
+        except Exception as e:
+            self.logger.warning(f"Error handling cookie popup: {e}")
 
     def get_page_source(self, url: str) -> Optional[str]:
         """Get page source using Selenium with error handling"""
@@ -92,7 +114,7 @@ class DAADScholarshipScraper:
             self._handle_cookie_popup()
 
             # Wait for search results to load
-            WebDriverWait(self.driver, 20).until(
+            WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located(
                     (By.CSS_SELECTOR, "ul.resultlist > li.entry")
                 )
@@ -103,6 +125,18 @@ class DAADScholarshipScraper:
         except TimeoutException:
             self.logger.error(f"Timeout loading page: {url}")
             return None
+
+
+    def navigate_to_next_page(self) -> Optional[str]:
+        """Navigate to the next page if available"""
+        try:
+            next_button = self.driver.find_element(By.XPATH, "//a[contains(text(), '›')]")
+            if 'disabled' not in next_button.get_attribute('class'):
+                next_button.click()
+                return True
+        except Exception:
+            pass
+        return False
 
     def extract_scholarship_links(self, soup: BeautifulSoup) -> List[Dict[str, str]]:
         """
@@ -120,7 +154,7 @@ class DAADScholarshipScraper:
         and title of the scholarship respectively.
         """
         """Extract scholarship links from search results page"""
-        scholarship_links = []
+
         results = soup.select('ul.resultlist > li.entry')
 
         for result in results:
@@ -129,15 +163,13 @@ class DAADScholarshipScraper:
                 if link_tag and link_tag.get('href'):
                     full_url = urljoin(self.base_url, link_tag['href'])
                     title = link_tag.get_text(strip=True).replace('\xa0• DAAD', '')
-                    scholarship_links.append({
+                    self.scholarship_links[full_url] = {
                         'url': full_url,
                         'title': title
-                    })
+                    }
             except Exception as e:
                 self.logger.warning(f"Error extracting link: {e}")
                 continue
-
-        return scholarship_links
 
     def _click_application_requirements_tab(self) -> None:
         """Click on application requirements tab and handle form if present"""
@@ -283,7 +315,8 @@ class DAADScholarshipScraper:
                 return []
 
             soup = BeautifulSoup(page_source, 'html.parser')
-            self._process_page_scholarships(soup)
+            self.extract_scholarship_links(soup)
+            self._process_page_scholarships()
             time.sleep(2)  # Respectful delay between pages
 
             return self.scholarships
@@ -292,9 +325,43 @@ class DAADScholarshipScraper:
             self.logger.error(f"Error during scraping: {e}")
             return self.scholarships
 
-    def _process_page_scholarships(self, soup: BeautifulSoup) -> None:
+    def scrape_first_n_pages(self, n: int = None) -> List[Dict]:
+        """Scrape first N pages of scholarships for testing"""
+        self.logger.info(f"Starting to scrape first {n} pages...")
+
+        try:
+            page_url = f"{self.search_url}?status=&origin=&subjectGrps=&daad=&intention=&q=&page=1&back=1"
+            page_source = self.get_page_source(page_url)
+
+            if not page_source:
+                self.logger.error("Failed to load first page")
+                return []
+
+            soup = BeautifulSoup(page_source, 'html.parser')
+            self.extract_scholarship_links(soup)
+            time.sleep(2)  # Respectful delay between pages
+
+            count = 0
+            while not n or count < n:
+                if self.navigate_to_next_page():
+                    page_source = self.driver.page_source
+                    soup = BeautifulSoup(page_source, 'html.parser')
+                    self.extract_scholarship_links(soup)
+                    time.sleep(2)
+                    count += 1 # Respectful delay between pages
+                else:
+                    break
+
+            return self.scholarship_links
+
+        except Exception as e:
+            self.logger.error(f"Error during scraping: {e}")
+            return self.scholarship_links
+
+
+    def _process_page_scholarships(self) -> None:
         """Process scholarships from a single page"""
-        scholarship_links = self.extract_scholarship_links(soup)
+        scholarship_links = list(self.scholarship_links.values())
         self.logger.info(f"Found {len(scholarship_links)} scholarships on page")
 
         for i, link_data in enumerate(scholarship_links, 1):
@@ -335,21 +402,24 @@ class DAADScholarshipScraper:
 
 def main():
     """Main function to run the scraper"""
-    with DAADScholarshipScraper(headless=True) as scraper:
+    with DAADScholarshipScraper(headless=False) as scraper:
         try:
             # Scrape scholarships (limit to first 3 pages for testing)
-            scholarships = scraper.scrape_scholarships()
+            # scraper.scrape_scholarships()
+            scholarships_links = scraper.scrape_first_n_pages()
+
+            scraper.scholarships = list(scholarships_links.values())
 
             # Save to JSON
             scraper.save_to_json('daad_scholarships.json')
 
             print("\nScraping completed!")
-            print(f"Total scholarships found: {len(scholarships)}")
+            print(f"Total scholarships found: {len(scraper.scholarships)}")
 
             # Display sample scholarship
-            if scholarships:
+            if scraper.scholarships:
                 print("\nSample scholarship:")
-                print(json.dumps(scholarships[0], indent=2))
+                print(json.dumps(scraper.scholarships[0], indent=2))
 
         except KeyboardInterrupt:
             print("\nScraping interrupted by user")
